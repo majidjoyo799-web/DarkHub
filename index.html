@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DarkHUB | Media Engine Pro</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --card-bg: #121212;
+            --accent: #e60023;
+            --text: #ffffff;
+            --text-dim: #b2b2b2;
+            --overlay: rgba(0, 0, 0, 0.85);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        body { background-color: var(--bg); color: var(--text); overflow-x: hidden; }
+        body.modal-open { overflow: hidden; } /* Stop background scroll */
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0; width: 100%; z-index: 1000;
+            background: rgba(5, 5, 5, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 12px 20px;
+            border-bottom: 1px solid #222;
+        }
+
+        .nav {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: -1px;
+        }
+
+        .search-container {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 12px 45px;
+            border-radius: 25px;
+            border: none;
+            background: #222;
+            color: white;
+            outline: none;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+
+        .search-container input:focus { background: #333; box-shadow: 0 0 0 2px var(--accent); }
+
+        .search-container svg {
+            position: absolute;
+            left: 15px; top: 50%;
+            transform: translateY(-50%);
+            fill: #777;
+        }
+
+        /* Tabs */
+        .tabs {
+            margin-top: 90px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px 0;
+        }
+
+        .tab {
+            padding: 8px 25px;
+            border-radius: 30px;
+            cursor: pointer;
+            background: #222;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
+
+        .tab.active { background: var(--accent); }
+
+        /* Stable Masonry Grid */
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 15px; }
+
+        #gallery {
+            column-count: 5;
+            column-gap: 15px;
+            width: 100%;
+        }
+
+        @media (max-width: 1200px) { #gallery { column-count: 4; } }
+        @media (max-width: 900px) { #gallery { column-count: 3; } }
+        @media (max-width: 600px) { #gallery { column-count: 2; } }
+
+        .card {
+            break-inside: avoid;
+            margin-bottom: 15px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            cursor: zoom-in;
+            border: 1px solid #222;
+        }
+
+        .card img, .card video {
+            width: 100%;
+            display: block;
+            border-radius: 16px;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover img, .card:hover video { transform: scale(1.03); }
+
+        .card-info {
+            position: absolute;
+            bottom: 0; width: 100%;
+            background: linear-gradient(transparent, rgba(0,0,0,0.9));
+            padding: 20px 15px 15px;
+            display: flex;
+            justify-content: flex-end;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 2;
+        }
+
+        .card:hover .card-info { opacity: 1; }
+
+        .dl-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        /* Fullscreen Preview Modal */
+        #previewModal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--overlay);
+            backdrop-filter: blur(15px);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            max-width: 90%;
+            max-height: 90vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .modal-content img, .modal-content video {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        }
+
+        .modal-tools {
+            margin-top: 15px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: -40px; right: 0;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        /* Loader */
+        .loader { text-align: center; padding: 40px; display: none; }
+        .spinner {
+            width: 35px; height: 35px;
+            border: 4px solid #222;
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        #toast {
+            position: fixed;
+            bottom: 30px; left: 50%;
+            transform: translateX(-50%);
+            background: white; color: black;
+            padding: 12px 25px; border-radius: 50px;
+            font-weight: bold; display: none; z-index: 3000;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="nav">
+            <a href="#" class="logo" onclick="location.reload()">DarkHUB</a>
+            <div class="search-container">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="searchInput" placeholder="Search amazing high-res content...">
+            </div>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <div class="tab active" data-type="photos">Photos</div>
+        <div class="tab" data-type="videos">Videos</div>
+    </div>
+
+    <div class="container">
+        <div id="gallery"></div>
+        <div id="loader" class="loader"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" onclick="closePreview(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-modal" onclick="closePreview(event)">&times;</span>
+            <div id="modalBody"></div>
+            <div class="modal-tools">
+                <button id="modalDlBtn" class="dl-btn">Download Now</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">Message</div>
+
+    <script>
+        const PEXELS_API_KEY = "jsGKm3lydkR8Ylu8FI9WkEIB5fI7aaCHW5ZFh0eCE70orZbO2hnsWgl3";
+
+        let state = {
+            query: "aesthetic dark",
+            type: "photos",
+            page: 1,
+            isLoading: false
+        };
+
+        const gallery = document.getElementById('gallery');
+        const searchInput = document.getElementById('searchInput');
+        const loader = document.getElementById('loader');
+        const previewModal = document.getElementById('previewModal');
+        const modalBody = document.getElementById('modalBody');
+        const modalDlBtn = document.getElementById('modalDlBtn');
+
+        window.onload = () => {
+            fetchData();
+            setupEvents();
+        };
+
+        function setupEvents() {
+            // Tab Switch
+            document.querySelectorAll('.tab').forEach(t => {
+                t.addEventListener('click', () => {
+                    if (state.isLoading) return;
+                    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+                    t.classList.add('active');
+                    state.type = t.dataset.type;
+                    resetGallery();
+                });
+            });
+
+            // Search Trigger
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    state.query = searchInput.value || "aesthetic dark";
+                    resetGallery();
+                }
+            });
+
+            // Scroll for more
+            window.addEventListener('scroll', () => {
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 1000) {
+                    if (!state.isLoading) {
+                        state.page++;
+                        fetchData();
+                    }
+                }
+            });
+        }
+
+        function resetGallery() {
+            state.page = 1;
+            gallery.innerHTML = '';
+            fetchData();
+        }
+
+        async function fetchData() {
+            state.isLoading = true;
+            loader.style.display = 'block';
+
+            const endpoint = state.type === 'photos' ? 'v1/search' : 'videos/search';
+            const url = `https://api.pexels.com/${endpoint}?query=${encodeURIComponent(state.query)}&page=${state.page}&per_page=20`;
+
+            try {
+                const res = await fetch(url, { headers: { 'Authorization': PEXELS_API_KEY } });
+                const data = await res.json();
+                renderItems(state.type === 'photos' ? data.photos : data.videos);
+            } catch (err) {
+                showToast("Connection Error!");
+            } finally {
+                state.isLoading = false;
+                loader.style.display = 'none';
+            }
+        }
+
+        function renderItems(items) {
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                let mediaTag = '';
+                let highResUrl = '';
+                let fileName = '';
+
+                if (state.type === 'photos') {
+                    mediaTag = `<img src="${item.src.large}" loading="lazy">`;
+                    highResUrl = item.src.original;
+                    fileName = `DarkHUB-Img-${item.id}.jpg`;
+                } else {
+                    const file = item.video_files[0];
+                    mediaTag = `<video loop muted playsinline onmouseover="this.play()" onmouseout="this.pause()">
+                                    <source src="${file.link}" type="video/mp4">
+                                </video>`;
+                    highResUrl = file.link;
+                    fileName = `DarkHUB-Vid-${item.id}.mp4`;
+                }
+
+                card.innerHTML = `
+                    ${mediaTag}
+                    <div class="card-info">
+                        <button class="dl-btn" onclick="downloadFile(event, '${highResUrl}', '${fileName}')">
+                            Download
+                        </button>
+                    </div>
+                `;
+
+                // Open Preview on Card Click
+                card.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'BUTTON') {
+                        openPreview(highResUrl, state.type, fileName);
+                    }
+                });
+
+                gallery.appendChild(card);
+            });
+        }
+
+        function openPreview(url, type, fileName) {
+            document.body.classList.add('modal-open');
+            modalBody.innerHTML = '';
+            
+            if (type === 'photos') {
+                modalBody.innerHTML = `<img src="${url}">`;
+            } else {
+                modalBody.innerHTML = `<video controls autoplay loop><source src="${url}" type="video/mp4"></video>`;
+            }
+
+            modalDlBtn.onclick = (e) => downloadFile(e, url, fileName);
+            previewModal.style.display = 'flex';
+        }
+
+        function closePreview(e) {
+            document.body.classList.remove('modal-open');
+            previewModal.style.display = 'none';
+            modalBody.innerHTML = '';
+        }
+
+        async function downloadFile(e, url, filename) {
+            e.stopPropagation();
+            const btn = e.currentTarget;
+            const originalText = btn.innerHTML;
+            
+            try {
+                btn.innerHTML = "Saving...";
+                btn.style.opacity = "0.7";
+                showToast("Processing high-quality file...");
+
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+                
+                showToast("Saved Successfully!");
+            } catch (err) {
+                window.open(url, '_blank');
+                showToast("Direct link opened!");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.style.opacity = "1";
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 2500);
+        }
+    </script>
+</body>
+</html>
